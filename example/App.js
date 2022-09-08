@@ -33,7 +33,7 @@ const App = () => {
           </View>
           : <Text>Please set a token at the top of App.js</Text>
       }
-      {/* <RoomPreview previewUrl={previewUrl ? {uri: previewUrl}:undefined} loadingUrl={{uri: 'https://swrooms.com/swloading.gif'}} style={{width: '50%'}} /> */}
+      <RoomPreview previewUrl={previewUrl ? { uri: previewUrl } : undefined} loadingUrl={{ uri: 'https://swrooms.com/swloading.gif' }} style={{ width: '50%' }} />
       <RoomPreview previewUrl={{uri: 'https://swrooms.com/swloading.gif'}} loadingUrl={{uri: 'https://swrooms.com/swloading.gif'}} style={{width: '50%'}} />
       <RoomPreview previewUrl={{uri: 'https://mathiasbynens.be/demo/animated-webp-supported.webp'}} loadingUrl={{uri: 'https://mathiasbynens.be/demo/animated-webp-supported.webp'}} style={{width: '50%'}} />
       {/* <Image

@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import FastImage, { FastImageProps } from 'react-native-fast-image'
+import {
+  ImageErrorEventData,
+  ImageProps,
+  ImageStyle,
+  NativeSyntheticEvent,
+  StyleProp,
+  View,
+} from 'react-native';
+import WebView from 'react-native-webview';
 
 type RoomPreviewProps = {
   /** Image to show while the room preview is loading. */
@@ -7,7 +15,7 @@ type RoomPreviewProps = {
   /** URL of the room preview. */
   previewUrl?: { uri: string };
   /** Custom styles. */
-  style?: FastImageProps['style'];
+  style?: StyleProp<ImageStyle> | undefined;
 };
 
 const BLACK_IMG = {
@@ -48,11 +56,11 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
     };
   }, [previewUrl]);
 
-  function onError() {
-    // if (e?.nativeEvent?.error && e?.nativeEvent?.error?.includes('animated-webp')) {
-    //   // error: "To encode animated webp please add the dependency to the animated-webp module"
-    //   console.warn("You need to enable animated webP support for room previews to work.")
-    // }
+  function onError(e: any) {
+    if (e?.nativeEvent?.error && e?.nativeEvent?.error?.includes('animated-webp')) {
+      // error: "To encode animated webp please add the dependency to the animated-webp module"
+      console.warn("You need to enable animated webP support for room previews to work.")
+    }
 
     if (currUrl?.uri !== loadingUrl?.uri) {
       setCurrUrl(loadingUrl);
@@ -63,6 +71,7 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
     <EtagImage
       source={currUrl ?? BLACK_IMG}
       onError={onError}
+      fadeDuration={0}
       style={[
         {
           aspectRatio: 16 / 9,
@@ -74,10 +83,10 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
   );
 };
 
-type EtagImageProps = Omit<FastImageProps, 'source' | 'onError'> & {
+type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
   source: { uri?: string };
   onError?:
-    | (() => void)
+    | ((error: NativeSyntheticEvent<ImageErrorEventData> | null) => void)
     | undefined;
 };
 
@@ -96,6 +105,7 @@ type EtagImageProps = Omit<FastImageProps, 'source' | 'onError'> & {
  *  - The image is properly refreshed (the native Image components never invalidates cache)
  */
 function EtagImage(props: EtagImageProps) {
+  // @ts-expect-error
   const [source, setSource] = useState(props.source);
   const lastEtag = useRef<string | null>(null);
 
@@ -121,13 +131,35 @@ function EtagImage(props: EtagImageProps) {
             lastEtag.current = etag;
           }
         } catch (e) {
-          props.onError?.();
+          props.onError?.(null);
         }
       })();
     }
   }, [props.source]);
 
-  return <FastImage {...props} source={source}></FastImage>;
+  return <View style={props.style} pointerEvents="none">
+    <WebView
+      source={{
+        html: `<html>
+<head>
+  <meta name="viewport" content="initial-scale=1.0">
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+    img { width: 100vw; height: 100vh; }
+    body {
+      background: url(${props.source.uri});
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+    }
+  </style>
+</head>
+</html>` }}
+      automaticallyAdjustContentInsets={false}
+      scrollEnabled={false}
+    />
+  </View>
+  // return <WebView style={props.style} source={{ html: `<img src="${source.uri}" />` }} />
+  // return <Image {...props} source={source}></Image>;
 }
 
 /**
