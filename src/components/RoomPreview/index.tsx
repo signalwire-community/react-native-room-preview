@@ -105,7 +105,6 @@ type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
  *  - The image is properly refreshed (the native Image components never invalidates cache)
  */
 function EtagImage(props: EtagImageProps) {
-  // @ts-expect-error
   const [source, setSource] = useState(props.source);
   const lastEtag = useRef<string | null>(null);
 
@@ -139,6 +138,7 @@ function EtagImage(props: EtagImageProps) {
 
   return <View style={props.style} pointerEvents="none">
     <WebView
+      key={source.uri}
       source={{
         html: `<html>
 <head>
@@ -147,7 +147,7 @@ function EtagImage(props: EtagImageProps) {
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
     img { width: 100vw; height: 100vh; }
     body {
-      background: url(${props.source.uri});
+      background: url(${source.uri});
       background-size: 100% 100%;
       background-repeat: no-repeat;
     }
