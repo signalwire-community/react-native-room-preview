@@ -105,8 +105,8 @@ type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
  *  - The image is properly refreshed (the native Image components never invalidates cache)
  */
 function EtagImage(props: EtagImageProps) {
-  const [source, setSource] = useState(props.source);
   const lastEtag = useRef<string | null>(null);
+  const webref = React.useRef<WebView | null>(null)
 
   useEffect(() => {
     if (
@@ -114,19 +114,19 @@ function EtagImage(props: EtagImageProps) {
       !props.source.uri ||
       props.source.uri.startsWith('data')
     ) {
-      setSource(props.source);
+      webref.current?.injectJavaScript(`
+        document.body.style.backgroundImage = \`url(${props.source.uri})\`;
+      `)
     } else {
       (async () => {
         try {
           const response = await fetch(props.source.uri!, { method: 'HEAD' });
           const etag = response.headers.get('etag');
           if (etag !== lastEtag.current) {
-            // The image changed, we need to refresh it.
-            setSource({
-              uri: (
-                await urlContentToDataUriNoCache(props.source.uri!)
-              ).toString(),
-            });
+            const datauri = await urlContentToDataUriNoCache(props.source.uri!)
+            webref.current?.injectJavaScript(`
+              document.body.style.backgroundImage = \`url(${datauri})\`;
+            `)
             lastEtag.current = etag;
           }
         } catch (e) {
@@ -138,7 +138,8 @@ function EtagImage(props: EtagImageProps) {
 
   return <View style={props.style} pointerEvents="none">
     <WebView
-      key={source.uri}
+      key={props.source.uri}
+      ref={webref}
       source={{
         html: `<html>
 <head>
@@ -147,7 +148,8 @@ function EtagImage(props: EtagImageProps) {
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
     img { width: 100vw; height: 100vh; }
     body {
-      background: url(${source.uri});
+      background-color: black;
+      background-image: url(${props.source.uri});
       background-size: 100% 100%;
       background-repeat: no-repeat;
     }
@@ -158,8 +160,6 @@ function EtagImage(props: EtagImageProps) {
       scrollEnabled={false}
     />
   </View>
-  // return <WebView style={props.style} source={{ html: `<img src="${source.uri}" />` }} />
-  // return <Image {...props} source={source}></Image>;
 }
 
 /**
