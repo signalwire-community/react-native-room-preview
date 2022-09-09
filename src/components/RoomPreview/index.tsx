@@ -146,7 +146,6 @@ function EtagImage(props: EtagImageProps) {
   <meta name="viewport" content="initial-scale=1.0">
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
-    img { width: 100vw; height: 100vh; }
     body {
       background-color: black;
       background-image: url(${props.source.uri});
