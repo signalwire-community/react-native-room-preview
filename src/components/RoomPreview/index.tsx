@@ -1,13 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ImageErrorEventData,
-  ImageProps,
-  ImageStyle,
-  NativeSyntheticEvent,
-  StyleProp,
-  View,
-} from 'react-native';
-import WebView from 'react-native-webview';
+import FastImage, { FastImageProps } from 'react-native-fast-image'
 
 type RoomPreviewProps = {
   /** Image to show while the room preview is loading. */
@@ -15,7 +7,7 @@ type RoomPreviewProps = {
   /** URL of the room preview. */
   previewUrl?: { uri: string };
   /** Custom styles. */
-  style?: StyleProp<ImageStyle> | undefined;
+  style?: FastImageProps['style'];
 };
 
 const BLACK_IMG = {
@@ -56,11 +48,11 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
     };
   }, [previewUrl]);
 
-  function onError(e: any) {
-    if (e?.nativeEvent?.error && e?.nativeEvent?.error?.includes('animated-webp')) {
-      // error: "To encode animated webp please add the dependency to the animated-webp module"
-      console.warn("You need to enable animated webP support for room previews to work.")
-    }
+  function onError() {
+    // if (e?.nativeEvent?.error && e?.nativeEvent?.error?.includes('animated-webp')) {
+    //   // error: "To encode animated webp please add the dependency to the animated-webp module"
+    //   console.warn("You need to enable animated webP support for room previews to work.")
+    // }
 
     if (currUrl?.uri !== loadingUrl?.uri) {
       setCurrUrl(loadingUrl);
@@ -71,7 +63,6 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
     <EtagImage
       source={currUrl ?? BLACK_IMG}
       onError={onError}
-      fadeDuration={0}
       style={[
         {
           aspectRatio: 16 / 9,
@@ -83,10 +74,10 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
   );
 };
 
-type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
+type EtagImageProps = Omit<FastImageProps, 'source' | 'onError'> & {
   source: { uri?: string };
   onError?:
-    | ((error: NativeSyntheticEvent<ImageErrorEventData> | null) => void)
+    | (() => void)
     | undefined;
 };
 
@@ -105,8 +96,8 @@ type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
  *  - The image is properly refreshed (the native Image components never invalidates cache)
  */
 function EtagImage(props: EtagImageProps) {
+  const [source, setSource] = useState(props.source);
   const lastEtag = useRef<string | null>(null);
-  const webref = React.useRef<WebView | null>(null)
 
   useEffect(() => {
     if (
@@ -114,51 +105,29 @@ function EtagImage(props: EtagImageProps) {
       !props.source.uri ||
       props.source.uri.startsWith('data')
     ) {
-      webref.current?.injectJavaScript(`
-        document.body.style.backgroundImage = \`url(${props.source.uri})\`;
-      `)
+      setSource(props.source);
     } else {
       (async () => {
         try {
           const response = await fetch(props.source.uri!, { method: 'HEAD' });
           const etag = response.headers.get('etag');
           if (etag !== lastEtag.current) {
-            const datauri = await urlContentToDataUriNoCache(props.source.uri!)
-            webref.current?.injectJavaScript(`
-              document.body.style.backgroundImage = \`url(${datauri})\`;
-            `)
+            // The image changed, we need to refresh it.
+            setSource({
+              uri: (
+                await urlContentToDataUriNoCache(props.source.uri!)
+              ).toString(),
+            });
             lastEtag.current = etag;
           }
         } catch (e) {
-          props.onError?.(null);
+          props.onError?.();
         }
       })();
     }
   }, [props.source]);
 
-  return <View style={props.style} pointerEvents="none">
-    <WebView
-      key={props.source.uri}
-      ref={webref}
-      source={{
-        html: `<html>
-<head>
-  <meta name="viewport" content="initial-scale=1.0">
-  <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
-    body {
-      background-color: black;
-      background-image: url(${props.source.uri});
-      background-size: 100% 100%;
-      background-repeat: no-repeat;
-    }
-  </style>
-</head>
-</html>` }}
-      automaticallyAdjustContentInsets={false}
-      scrollEnabled={false}
-    />
-  </View>
+  return <FastImage {...props} source={source}></FastImage>;
 }
 
 /**

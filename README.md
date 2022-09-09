@@ -11,7 +11,7 @@ React Native component for displaying [SignalWire](https://signalwire.com) Room 
 ## Installation
 
 ```bash
-npm install @signalwire-community/react-native-room-preview react-native-webview
+npm install @signalwire-community/react-native-room-preview
 ```
 
 ## Usage
