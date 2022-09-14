@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ImageErrorEventData,
   ImageProps,
   ImageStyle,
-  NativeSyntheticEvent,
   StyleProp,
   View,
 } from 'react-native';
@@ -16,6 +14,11 @@ type RoomPreviewProps = {
   previewUrl?: { uri: string };
   /** Custom styles. */
   style?: StyleProp<ImageStyle> | undefined;
+  /**
+   * After how much time (in milliseconds) the component should check if there
+   * is an updated room preview available. Default is 10000.
+   */
+  refreshInterval?: number;
 };
 
 const BLACK_IMG = {
@@ -26,6 +29,7 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
   previewUrl,
   loadingUrl,
   style,
+  refreshInterval = 10000
 }) => {
   const [currUrl, setCurrUrl] = useState<{ uri: string } | undefined>(
     loadingUrl
@@ -46,7 +50,7 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
       intv = setInterval(async () => {
         // Update the object reference to force a refresh
         setCurrUrl({ ...previewUrl });
-      }, 10000);
+      }, refreshInterval);
     }
 
     return () => {
@@ -56,12 +60,7 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
     };
   }, [previewUrl]);
 
-  function onError(e: any) {
-    if (e?.nativeEvent?.error && e?.nativeEvent?.error?.includes('animated-webp')) {
-      // error: "To encode animated webp please add the dependency to the animated-webp module"
-      console.warn("You need to enable animated webP support for room previews to work.")
-    }
-
+  function onError() {
     if (currUrl?.uri !== loadingUrl?.uri) {
       setCurrUrl(loadingUrl);
     }
@@ -86,7 +85,7 @@ const RoomPreview: React.FC<RoomPreviewProps> = ({
 type EtagImageProps = Omit<ImageProps, 'source' | 'onError'> & {
   source: { uri?: string };
   onError?:
-    | ((error: NativeSyntheticEvent<ImageErrorEventData> | null) => void)
+    | (() => void)
     | undefined;
 };
 
@@ -121,6 +120,9 @@ function EtagImage(props: EtagImageProps) {
       (async () => {
         try {
           const response = await fetch(props.source.uri!, { method: 'HEAD' });
+          if (response.status < 200 || response.status > 299) {
+            throw new Error()
+          }
           const etag = response.headers.get('etag');
           if (etag !== lastEtag.current) {
             const datauri = await urlContentToDataUriNoCache(props.source.uri!)
@@ -130,7 +132,7 @@ function EtagImage(props: EtagImageProps) {
             lastEtag.current = etag;
           }
         } catch (e) {
-          props.onError?.(null);
+          props.onError?.();
         }
       })();
     }

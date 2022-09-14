@@ -2,7 +2,7 @@
 const TOKEN = ''
 
 import React, { useState } from 'react';
-import { SafeAreaView, View, Text, Image } from 'react-native';
+import { SafeAreaView, View, Text } from 'react-native';
 
 import { Video } from '@signalwire-community/react-native';
 import { RoomPreview } from '@signalwire-community/react-native-room-preview';
